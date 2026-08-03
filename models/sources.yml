@@ -1,0 +1,125 @@
+version: 2
+
+sources:
+  - name: GA4
+    description: GA4 data
+    database: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING"
+    schema: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING_GA4"
+    tables:
+      - name: EVENTS
+        description: ga4 events table.
+  
+  - name: GA4_silver
+    description: GA4 Silver data
+    database: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING"
+    schema: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING_GA4"
+    tables:
+      - name: dim_events_flat
+        description: GA4 Dim Flattened Events   
+        identifier: DIM_FLATTENED_EVENTS
+
+  - name: Chat_History
+    description: Chat_History data
+    database: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING"
+    schema: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING_CHAT_HISTORY"
+    tables:
+      - name: MESSAGES_ICEBERG
+        description: Chat_History table.
+
+  - name: CRM
+    description: CRM data
+    database: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING"
+    schema: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING_CRM"
+    tables:
+      - name: INDIVIDUALEMAILRESULT_RSG
+        description: CRM IndividualEmailResult table.
+      - name: CONTACT_RSG
+        description: CRM Contact table.
+      - name: CONTACTPOINTTYPECONSENT_RSG
+        description: CRM Contact Point Type Consent table.
+
+
+  - name: TS
+    description: TS data
+    database: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING"
+    schema: "{{ env_var('DBT_ENVIRONMENT') }}_LANDING_TRAVEL_STUDIO"
+    tables:
+      - name: BOOKING_HEADER_DETAILS
+        identifier: "{{ env_var('DBT_TS_TABLES_PREFIX', '') }}BOOKING_HEADER_DETAILS"
+        description: "Raw booking header details from Open Destinations API"
+        columns:
+          - name: BOOKINGID
+            description: "Unique booking identifier"
+          - name: BookingReferenceNumber
+            description: "Booking reference number"
+          - name: CLIENTID
+            description: "Client identifier"
+          - name: BOOKINGSTATUSID
+            description: "Booking status identifier"
+          - name: SOURCETYPEID
+            description: "Source type/channel identifier"
+          
+      - name: BOOKED_SERVICE_DETAILS
+        identifier: "{{ env_var('DBT_TS_TABLES_PREFIX', '') }}BOOKED_SERVICE_DETAILS"
+        description: "Raw booked service details"
+        columns:
+          - name: BOOKINGID
+            description: "Booking identifier"
+          - name: SERVICEID
+            description: "Service identifier"
+          - name: BOOKEDSERVICEID
+            description: "Booked service identifier"
+          - name: SERVICETYPENAME
+            description: "Type of service (accommodation, mobility, experience)"
+          - name: REGIONNAME
+            description: "Region/destination name"
+          - name: INGESTION_TIMESTAMP
+            description: "Data ingestion timestamp"
+            
+      - name: BOOKED_OPTION_DETAILS
+        identifier: "{{ env_var('DBT_TS_TABLES_PREFIX', '') }}BOOKED_OPTION_DETAILS"
+        description: "Raw booked option details"
+        columns:
+          - name: BOOKEDOPTIONID
+            description: "Booked option identifier"
+          - name: BOOKEDSERVICEID
+            description: "Associated booked service identifier"
+          - name: SERVICETYPEOPTIONNAME
+            description: "Service option name"
+          
+      - name: BOOKED_PASSENGERS
+        identifier: "{{ env_var('DBT_TS_TABLES_PREFIX', '') }}BOOKED_PASSENGERS"
+        description: "Raw passenger details"
+        columns:
+          - name: PASSENGERID
+            description: "Passenger identifier"
+          - name: BOOKINGID
+            description: "Associated booking identifier"
+          - name: PASSENGERFIRSTNAME
+            description: "Passenger first name"
+          - name: PASSENGERLASTNAME
+            description: "Passenger last name"
+          - name: COUNTRYID
+            description: "Country identifier"
+          - name: COUNTRYNAME
+            description: "Country name"
+          - name: INGESTION_TIMESTAMP
+            description: "Data ingestion timestamp"
+            
+      - name: BOOKING_FINANCE_DATA
+        identifier: "{{ env_var('DBT_TS_TABLES_PREFIX', '') }}BOOKING_FINANCE_DATA"
+        description: "Raw booking finance data with amounts and margins"
+        columns:
+          - name: BOOKINGID
+            description: "Booking identifier"
+          - name: BOOKAMOUNT
+            description: "Total booking amount"
+          - name: SELLAMOUNT
+            description: "Total selling amount"
+          - name: MARGINAMOUNT
+            description: "Margin amount"
+          - name: MARGINPERCENT
+            description: "Margin percentage"
+      - name: BOOKEDSERVICES_FINANCE_DATA
+        identifier: "{{ env_var('DBT_TS_TABLES_PREFIX', '') }}BOOKEDSERVICES_FINANCE_DATA"
+        description: "Raw booking finance data with amounts and margins"

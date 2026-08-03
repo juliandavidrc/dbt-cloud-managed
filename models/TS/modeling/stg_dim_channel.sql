@@ -1,0 +1,14 @@
+{{ iceberg_model_config() }}
+WITH unique_channels AS (
+SELECT 
+    DISTINCT(ORIGINTYPENAME)  CHANNEL_NAME, 
+    HASH(ORIGINTYPENAME) AS CHANNEL_ID
+
+    FROM {{ source('TS', 'BOOKING_HEADER_DETAILS') }}
+    WHERE ORIGINTYPENAME IS NOT NULL
+)
+
+SELECT 
+    CHANNEL_ID,
+    CHANNEL_NAME
+    FROM unique_channels

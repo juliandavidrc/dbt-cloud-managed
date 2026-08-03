@@ -1,0 +1,56 @@
+{{ iceberg_model_config(
+    materialized_type="incremental", 
+    unique_key="SERVICE_ID", 
+    incremental_strategy="merge"
+) }}
+
+WITH service_scd AS (
+    SELECT 
+        SERVICEID        AS SERVICE_ID,
+        SERVICETYPENAME  AS SERVICE_TYPE_NAME,
+        SERVICELONGNAME  AS SERVICE_LONG_NAME,
+        SUPPLIERNAME     AS SUPPLIER_NAME,
+        CASE 
+            WHEN LOWER(SERVICETYPENAME) LIKE '%accommodation%' THEN 'accommodation'
+            WHEN LOWER(SERVICETYPENAME) LIKE '%mobility%' THEN 'mobility'
+            WHEN LOWER(SERVICETYPENAME) LIKE '%experience%' THEN 'experience'
+            ELSE SERVICETYPENAME
+        END AS SERVICE_CATEGORY,
+        CASE 
+            WHEN LOWER(SERVICETYPENAME) LIKE '%accommodation%' THEN TRUE ELSE FALSE 
+        END AS IS_HOTEL,
+        CASE 
+            WHEN LOWER(SERVICETYPENAME) LIKE '%mobility%' THEN TRUE ELSE FALSE 
+        END AS IS_MOBILITY_SERVICE,
+        CASE 
+            WHEN LOWER(SERVICETYPENAME) LIKE '%experience%' THEN TRUE ELSE FALSE 
+        END AS IS_EXPERIENCE,
+        INGESTION_TIMESTAMP
+    FROM {{ source('TS', 'BOOKED_SERVICE_DETAILS') }}
+    WHERE SERVICEID IS NOT NULL
+    AND INGESTION_TIMESTAMP IS NOT NULL
+    {% if is_incremental() %}
+      AND INGESTION_TIMESTAMP > (SELECT MAX(INGESTION_TIMESTAMP) FROM {{ this }})
+    {% endif %}
+    QUALIFY ROW_NUMBER() OVER (
+            PARTITION BY SERVICEID, SERVICETYPENAME, SERVICELONGNAME, SUPPLIERNAME
+            ORDER BY INGESTION_TIMESTAMP
+        )  = 1
+)
+SELECT 
+    SERVICE_ID,
+    SERVICE_TYPE_NAME,
+    SERVICE_LONG_NAME,
+    SUPPLIER_NAME,
+    SERVICE_CATEGORY,
+    IS_HOTEL,
+    IS_MOBILITY_SERVICE,
+    IS_EXPERIENCE,
+    INGESTION_TIMESTAMP
+FROM service_scd
+QUALIFY  ROW_NUMBER() OVER (
+        PARTITION BY SERVICE_ID, DATE_TRUNC('DAY', INGESTION_TIMESTAMP)
+        ORDER BY INGESTION_TIMESTAMP DESC
+    )  = 1
+
+ORDER BY 1

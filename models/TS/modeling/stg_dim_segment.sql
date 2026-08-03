@@ -1,0 +1,12 @@
+{{ iceberg_model_config() }}
+WITH unique_segments AS (
+    SELECT 
+        DISTINCT(AGENCYTYPENAME) AS SEGMENT_NAME,
+        HASH(AGENCYTYPENAME) AS SEGMENT_ID
+    FROM {{ source('TS', 'BOOKING_HEADER_DETAILS') }}
+    WHERE AGENCYTYPENAME IS NOT NULL
+)
+SELECT 
+    SEGMENT_ID,
+    SEGMENT_NAME
+FROM unique_segments

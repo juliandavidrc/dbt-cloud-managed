@@ -1,0 +1,15 @@
+{{ iceberg_model_config() }}
+
+SELECT 
+    BOOKING_ID,
+    BOOKED_SERVICE_ID,
+    SERVICE_ID,
+    BOOKED_OPTION_ID,
+    OPTION_ID,
+    SNAPSHOT_DATE
+FROM {{ ref('stg_fact_booking_services') }}
+WHERE SNAPSHOT_RANK = 1
+QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY BOOKING_ID , BOOKED_SERVICE_ID , BOOKED_OPTION_ID
+        ORDER BY SNAPSHOT_DATE DESC
+    ) = 1 

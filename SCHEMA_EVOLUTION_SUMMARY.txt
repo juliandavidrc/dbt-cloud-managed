@@ -1,0 +1,199 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    SCHEMA EVOLUTION IMPLEMENTATION                           ║
+║                         Evolving Schemas with dbt                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. MACRO ACTUALIZADO                                                         │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  📁 macros/config_model_iceberg_strategy.sql
+
+  ✨ NUEVO PARÁMETRO:
+     on_schema_change="sync_all_columns" (default)
+
+  📝 Uso:
+     {{ config_model_iceberg_strategy(
+         materialized_type="table",
+         on_schema_change="sync_all_columns"
+     ) }}
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 2. OPCIONES DE on_schema_change                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ╔════════════════════╦═══════════════════════════════════════════════════════╗
+  ║ sync_all_columns   ║ ✅ Agrega Y elimina columnas automáticamente         ║
+  ║                    ║ 👉 RECOMENDADO para evolving schemas                 ║
+  ╠════════════════════╬═══════════════════════════════════════════════════════╣
+  ║ append_new_columns ║ ➕ Solo agrega columnas nuevas                       ║
+  ║                    ║ ❌ NO elimina columnas obsoletas                      ║
+  ╠════════════════════╬═══════════════════════════════════════════════════════╣
+  ║ fail               ║ 🚫 Falla el build si detecta cambios                 ║
+  ║                    ║ 👉 Útil para PROD estricto                            ║
+  ╠════════════════════╬═══════════════════════════════════════════════════════╣
+  ║ ignore             ║ 🙈 Ignora cambios (puede causar errores)             ║
+  ║                    ║ ❌ NO recomendado                                     ║
+  ╚════════════════════╩═══════════════════════════════════════════════════════╝
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 3. MODELOS ACTUALIZADOS (10 archivos)                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  🟡 GOLD LAYER - MODELING (Staging)
+  ├── models/GA4/modeling/stg_dim_campaign_source.sql       ✅
+  ├── models/GA4/modeling/stg_dim_campaign_medium.sql       ✅
+  ├── models/GA4/modeling/stg_dim_campaign_name.sql         ✅
+  ├── models/GA4/modeling/stg_dim_traffic_category.sql      ✅
+  └── models/GA4/modeling/stg_dim_country_marketing.sql     ✅
+
+  🟢 GOLD LAYER - CONSUMPTION
+  ├── models/GA4/consumption/dim_campaign_source.sql        ✅
+  ├── models/GA4/consumption/dim_campaign_medium.sql        ✅
+  ├── models/GA4/consumption/dim_campaign_name.sql          ✅
+  ├── models/GA4/consumption/dim_traffic_category.sql       ✅
+  └── models/GA4/consumption/dim_country_marketing.sql      ✅
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 4. EJEMPLO DE USO                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  📌 ANTES: Tabla con 3 columnas
+     ┌─────────────────────┐
+     │ campaign_source_id  │
+     │ campaign_source     │
+     │ process_date        │
+     └─────────────────────┘
+
+  🔄 CAMBIO: GA4 agrega nuevo campo campaign_type
+
+  {{ config_model_iceberg_strategy(
+      materialized_type="table",
+      on_schema_change="sync_all_columns"  -- ✨ Maneja el cambio automáticamente
+  ) }}
+
+  select
+      campaign_source_id,
+      campaign_source,
+      campaign_type,          -- ✨ NUEVA COLUMNA
+      process_ingestion_date
+  from table_campaign_source
+
+  📌 DESPUÉS: Tabla con 4 columnas
+     ┌─────────────────────┐
+     │ campaign_source_id  │
+     │ campaign_source     │
+     │ campaign_type       │ ✨ NUEVA
+     │ process_date        │
+     └─────────────────────┘
+
+  🎯 RESULTADO:
+     ✅ Columna agregada automáticamente
+     ✅ Sin ALTER TABLE manual
+     ✅ Filas existentes = NULL en nueva columna
+     ✅ Nuevas filas = valores reales
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 5. FLUJO DE SCHEMA EVOLUTION                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  1️⃣  GA4 agrega nuevo campo
+       ↓
+  2️⃣  Actualizar modelo dbt (agregar columna en SELECT)
+       ↓
+  3️⃣  dbt run --models stg_dim_campaign_source
+       ↓
+  4️⃣  dbt detecta cambio de schema
+       ↓
+  5️⃣  on_schema_change="sync_all_columns" actúa
+       ↓
+  6️⃣  Columna agregada a tabla Iceberg automáticamente
+       ↓
+  7️⃣  Propagar cambio a consumption layer
+       ↓
+  8️⃣  dbt test (verificar integridad)
+       ↓
+  9️⃣  ✅ COMPLETO
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 6. COMANDOS ÚTILES                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  # Ejecutar modelo con schema evolution
+  dbt run --models stg_dim_campaign_source
+
+  # Ejecutar todos los modelos downstream
+  dbt run --models stg_dim_campaign_source+
+
+  # Ver logs detallados
+  dbt run --models stg_dim_campaign_source --debug
+
+  # Full refresh si hay problemas
+  dbt run --full-refresh --models stg_dim_campaign_source
+
+  # Ejecutar tests
+  dbt test --models stg_dim_campaign_source
+
+  # Verificar columnas en Snowflake
+  SHOW COLUMNS IN TABLE stg_dim_campaign_source;
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 7. BEST PRACTICES                                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ✅ DO:
+     • Usa sync_all_columns para dimensiones que cambian frecuentemente
+     • Agrega DEFAULT o COALESCE para evitar NULLs masivos
+     • Documenta cambios en schema.yml
+     • Prueba en DEV antes de PROD
+     • Ejecuta dbt test después de schema changes
+     • Propaga cambios a todos los layers
+
+  ❌ DON'T:
+     • No uses ignore en PROD
+     • No cambies tipos de datos sin full-refresh
+     • No elimines columnas usadas por dashboards activos
+     • No mezcles fail con cambios frecuentes
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 8. ARCHIVOS DE REFERENCIA                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  📄 SCHEMA_EVOLUTION.md              → Documentación completa
+  📄 examples/schema_evolution_example.sql  → Ejemplos prácticos
+  📄 macros/config_model_iceberg_strategy.sql → Macro actualizado
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 9. LIMITACIONES                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ⚠️  on_schema_change NO maneja:
+      ❌ Cambios de tipo de dato (VARCHAR → INT)
+      ❌ Renombrar columnas
+      ❌ Cambiar nullability (NOT NULL ↔ NULL)
+
+  💡 Solución: Usar --full-refresh o ALTER TABLE manual
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 10. COMPATIBILIDAD                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  ✅ Snowflake: Full support
+  ✅ Iceberg Tables: Full support
+  ✅ Incremental models: Full support
+  ✅ Table models: Full support
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              IMPLEMENTACIÓN COMPLETA                         ║
+║                    ¡Tu proyecto está listo para evolving schemas!           ║
+╚══════════════════════════════════════════════════════════════════════════════╝

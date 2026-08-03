@@ -1,0 +1,54 @@
+name: 'my_new_project'
+version: '1.0.0'
+config-version: 2
+
+profile: 'default'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  my_new_project:
+    GA4:
+      modeling:        
+        +database: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING"
+        +schema: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING_GA4"
+      consumption:        
+        +database: "{{ env_var('DBT_ENVIRONMENT') }}_CONSUMPTION"
+        +schema: "{{ env_var('DBT_ENVIRONMENT') }}_CONSUMPTION_GA4"
+        fact_events:
+          +tags: ['fact']
+        fact_ctr:
+            +tags: ['fact']
+        fact_website_toppage:
+            +tags: ['fact']
+    Chat_History:
+      +schema: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING_CHAT_HISTORY"
+      +database: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING" 
+    CRM:
+      silver:
+        +database: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING"
+        +schema: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING_CRM"      
+      gold:
+        +database: "{{ env_var('DBT_ENVIRONMENT') }}_CONSUMPTION"
+        +schema: "{{ env_var('DBT_ENVIRONMENT') }}_CONSUMPTION_CRM"
+    TS:
+      modeling:
+        +database: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING"
+        +schema: "{{ env_var('DBT_ENVIRONMENT') }}_MODELING_TRAVEL_STUDIO"
+      consumption:
+        +database: "{{ env_var('DBT_ENVIRONMENT') }}_CONSUMPTION"
+        +schema: "{{ env_var('DBT_ENVIRONMENT') }}_CONSUMPTION_TRAVEL_STUDIO"  
+
+
+    example:
+      +materialized: table
